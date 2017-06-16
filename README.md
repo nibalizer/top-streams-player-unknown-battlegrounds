@@ -1,8 +1,7 @@
 # top-streams-player-unknown-battlegrounds
 
 
-This project requires ImageMagick[1] and tesseract[2].
-n
+This project requires ImageMagick[1] and tesseract[2] jq.
 
 
 [1] http://www.imagemagick.org/script/index.php
