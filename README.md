@@ -1,9 +1,10 @@
 # top-streams-player-unknown-battlegrounds
 
+## Requirements
 
-This project requires ImageMagick[1] , tesseract[2] , jq and livestreamer.
+This project requires:
 
-
-[1] http://www.imagemagick.org/script/index.php
-[2] https://github.com/tesseract-ocr
-
+1. [ImageMagick](http://www.imagemagick.org/script/index.php)
+1. [jq](https://stedolan.github.io/jq/)
+1. [livestreamer](http://docs.livestreamer.io/)
+1. [tesseract](https://github.com/tesseract-ocr)
