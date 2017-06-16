@@ -12,7 +12,7 @@ function main() {
     exit 1
   fi
 
-  if [[ ! cmd_exists jq ]]; then
+  if ! type jq > /dev/null; then
     echo "Need to install jq (ex: apt-get install jq)"
     exit 1
   fi
