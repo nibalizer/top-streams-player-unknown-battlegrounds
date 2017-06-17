@@ -17,10 +17,10 @@ function main() {
     exit 1
   fi
 
-  curl -s -H "Client-ID: $client_id" \
-       $streams_endpoint             \
+  curl -s -H "Client-ID: $client_id"            \
+       $streams_endpoint                        \
        | jq '.["streams"][]["channel"]["name"]' \
-       | tr -d \" \
+       | tr -d \"                               \
        > streams.txt
 }
 
