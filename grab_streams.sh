@@ -19,7 +19,9 @@ function main() {
 
   curl -s -H "Client-ID: $client_id" \
        $streams_endpoint             \
-       | jq '.' > streams.txt
+       | jq '.["streams"][]["channel"]["name"]' \
+       | tr -d \" \
+       > streams.txt
 }
 
 main "$@"
