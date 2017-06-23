@@ -1,25 +1,28 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-function ensure_reqs() {
-  if [[ -z "$client_id" ]]; then
-    echo "Need to set environment variable client_id!"
+function dep_check() {
+  if ! type "$1" > /dev/null; then
+    echo "Dependency $1 not satisfied"
     exit 1
   fi
+}
 
-  if ! type jq > /dev/null; then
-    echo "Need to install jq (ex: apt-get install jq)"
+function var_check() {
+  local var_name="$1"
+  if [[ -z "${!1}" ]]; then
+    echo "Need to set environment variable $var_name"
     exit 1
   fi
+}
 
-  if ! type livestreamer > /dev/null; then
-    echo "Need to install livestreamer (ex: pip install livestreamer)"
-    exit 1
-  fi
-
-  if ! type timeout > /dev/null; then
-    echo "Need to install timeout (ex: apt-get install timeout)"
-    exit 1
-  fi
+function ensure_deps() {
+  var_check client_id
+  dep_check convert
+  dep_check ffmpeg
+  dep_check identify
+  dep_check jq
+  dep_check livestreamer
+  dep_check gtimeout
 }
 
 function grab_streams_list() {
@@ -34,13 +37,25 @@ function grab_streams_list() {
 function record_stream() {
   local stream_name="$1"
 
-  timeout -k 0m 5s                                    \
+  gtimeout -k 0m 3s                                   \
           livestreamer -Q -f "twitch.tv/$stream_name" \
           best -o "./stream_clips/$stream_name.mp4"
 }
 
+function get_frame() {
+  local clip_name="$1"
+  local clip_path="./stream_clips/$1"
+  local thumbnail_name="${clip_name%.mp4}"
+  local thumbnail_path="./thumbnails/$thumbnail_name.jpg"
+  ffmpeg -y -i $clip_path      \
+         -vf select='eq(n\,1)' \
+         -vsync vfr -q:v 2     \
+         -f image2pipe         \
+         -vcodec ppm $thumbnail_path
+}
+
 function main() {
-  ensure_reqs
+  ensure_deps
   local streams=($(grab_streams_list))
 
   if [[ -z "$streams" ]]; then
@@ -55,6 +70,15 @@ function main() {
 
   for stream in "${streams[@]}"; do
     record_stream $stream
+  done
+
+  if [[ ! -d ./thumbnails ]]; then
+    echo "Making thumbnails dir..."
+    mkdir ./thumbnails
+  fi
+
+  for clip in $(ls ./stream_clips); do
+    get_frame $clip
   done
 }
 
