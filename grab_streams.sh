@@ -7,6 +7,13 @@ function dep_check() {
   fi
 }
 
+function dir_check() {
+  if [[ ! -d "./$1" ]]; then
+    echo "Making $1 dir..."
+    mkdir "./$1"
+  fi
+}
+
 function var_check() {
   local var_name="$1"
   if [[ -z "${!1}" ]]; then
@@ -27,10 +34,14 @@ function ensure_deps() {
 
 function list_streams() {
   local streams_endpoint=https://api.twitch.tv/kraken/streams\?game\=PLAYERUNKNOWN\'\S+BATTLEGROUNDS
-  local streams="$(curl -s -H "Client-ID: $client_id"      \
-                  $streams_endpoint                        \
-                  | jq -c '.["streams"][]["channel"] | select(.broadcaster_language | contains("en")) | .name' \
-                  | tr -d \")"
+  local streams="$(curl -s -H "Client-ID: $client_id" \
+                   $streams_endpoint                  \
+                   | jq -c '.["streams"][]["channel"]
+                   | select(.broadcaster_language
+                   | contains("en")) | .name'         \
+                   | tr -d \")"
+
+  # "return" the string to main
   echo $streams
 }
 
@@ -54,6 +65,63 @@ function get_frame() {
          -vcodec ppm $thumbnail_path
 }
 
+function get_lowest_stream() {
+  if [[ -f ./playercounts.txt ]]; then
+    touch playercounts.txt
+  fi
+
+  for thumbnail in $(ls thumbnails); do
+    local stream_name="${thumbnail%.jpg}"
+    local vert_pix=$(identify thumbnails/${thumbnail} \
+                     | cut -d " " -f 3                \
+                     | cut -d "x" -f 2)
+
+    if [[ $vert_pix = 1080 ]]; then
+        #echo "big pic" $vert_pix
+        convert -quiet thumbnails/${thumbnail} -crop 45x40+1785+30 target.png
+    fi
+
+    if [[ $vert_pix = 720 ]]; then
+        #echo "small pic" $vert_pix
+        convert -quiet thumbnails/${thumbnail} -crop 28x20+1190+25 target.png
+    fi
+
+    tesseract -psm 8 target.png out
+    local playercount=$(head -n 1 out.txt)
+
+    if [[ ! "$playercount" =~ ^-?[0-9]+$ ]]; then
+      rm out.txt target.png
+      continue
+    elif [[ "$playercount" == "0" ]]; then
+      rm out.txt target.png
+      continue
+    elif [[ "$playercount" == "1" ]]; then
+      rm out.txt target.png
+      continue
+    fi
+
+    printf "%s %s\n" "$playercount" "$stream_name" >> playercounts.txt
+    rm out.txt target.png
+  done
+
+  local lowest_stream=$(cut -f1 playercounts.txt    \
+                        | sort -n | uniq | head -n1 \
+                        | cut -d' ' -f2)
+  rm playercounts.txt
+
+  # "return" the string to main
+  echo $lowest_stream
+}
+
+function write_index() {
+  local channel="$1"
+  echo "<iframe src="http://player.twitch.tv/?channel={$1}" height="720" width="1280" frameborder="0" scrolling="no" allowfullscreen="true"></iframe>" > index.html
+}
+
+function cleanup() {
+  rm -rf stream_clips thumbnails
+}
+
 function main() {
   ensure_deps
   local streams=($(list_streams))
@@ -63,23 +131,19 @@ function main() {
     exit 1
   fi
 
-  if [[ ! -d ./stream_clips ]]; then
-    echo "Making stream_clips dir..."
-    mkdir ./stream_clips
-  fi
-
+  dir_check stream_clips
   for stream in "${streams[@]}"; do
     record_stream $stream
   done
 
-  if [[ ! -d ./thumbnails ]]; then
-    echo "Making thumbnails dir..."
-    mkdir ./thumbnails
-  fi
-
+  dir_check thumbnails
   for clip in $(ls ./stream_clips); do
     get_frame $clip
   done
+
+  local lowest_stream=$(get_lowest_stream)
+  write_index $lowest_stream
+  cleanup
 }
 
 main "$@"
