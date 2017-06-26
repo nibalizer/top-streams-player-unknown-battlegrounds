@@ -22,14 +22,14 @@ function ensure_deps() {
   dep_check identify
   dep_check jq
   dep_check livestreamer
-  dep_check gtimeout
+  dep_check timeout
 }
 
-function grab_streams_list() {
+function list_streams() {
   local streams_endpoint=https://api.twitch.tv/kraken/streams\?game\=PLAYERUNKNOWN\'\S+BATTLEGROUNDS
   local streams="$(curl -s -H "Client-ID: $client_id"      \
                   $streams_endpoint                        \
-                  | jq '.["streams"][]["channel"]["name"]' \
+                  | jq -c '.["streams"][]["channel"] | select(.broadcaster_language | contains("en")) | .name' \
                   | tr -d \")"
   echo $streams
 }
@@ -37,7 +37,7 @@ function grab_streams_list() {
 function record_stream() {
   local stream_name="$1"
 
-  gtimeout -k 0m 3s                                   \
+  timeout -k 0m 5s                                    \
           livestreamer -Q -f "twitch.tv/$stream_name" \
           best -o "./stream_clips/$stream_name.mp4"
 }
@@ -56,7 +56,7 @@ function get_frame() {
 
 function main() {
   ensure_deps
-  local streams=($(grab_streams_list))
+  local streams=($(list_streams))
 
   if [[ -z "$streams" ]]; then
     echo "There are no live streams at the moment"
