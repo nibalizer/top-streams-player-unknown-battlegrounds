@@ -2,14 +2,14 @@
 
 function dep_check() {
   if ! type "$1" > /dev/null; then
-    echo "Dependency $1 not satisfied"
+    echo "ERROR Dependency not satisfied: $1"
     exit 1
   fi
 }
 
 function dir_check() {
   if [[ ! -d "./$1" ]]; then
-    echo "Making $1 dir..."
+    echo "INFO Making dir: $1"
     mkdir "./$1"
   fi
 }
@@ -17,7 +17,7 @@ function dir_check() {
 function var_check() {
   local var_name="$1"
   if [[ -z "${!1}" ]]; then
-    echo "Need to set environment variable $var_name"
+    echo "ERROR Need to set environment variable: $var_name"
     exit 1
   fi
 }
