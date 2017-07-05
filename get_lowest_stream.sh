@@ -107,7 +107,6 @@ function get_lowest_stream() {
   local lowest_stream=$(cut -f1 playercounts.txt    \
                         | sort -n | uniq | head -n1 \
                         | cut -d' ' -f2)
-  rm playercounts.txt
 
   # "return" the string to main
   echo $lowest_stream
@@ -115,11 +114,12 @@ function get_lowest_stream() {
 
 function write_index() {
   local channel="$1"
-  echo "<iframe src="http://player.twitch.tv/?channel={$1}" height="720" width="1280" frameborder="0" scrolling="no" allowfullscreen="true"></iframe>" > index.html
+  echo "<iframe src="http://player.twitch.tv/?channel={$1}" height="720" width="1280" frameborder="0" scrolling="no" allowfullscreen="true"></iframe><script type="text/javascript" src="http://livejs.com/live.js"></script>" > /var/www/html/index.html
 }
 
 function cleanup() {
   rm -rf stream_clips thumbnails
+  rm playercounts.txt
 }
 
 function main() {
@@ -141,9 +141,17 @@ function main() {
     get_frame $clip
   done
 
-  local lowest_stream=$(get_lowest_stream)
-  write_index $lowest_stream
-  cleanup
+  local current_lowest=$(get_lowest_stream)
+  local last_lowest=$(cat lowest.txt)
+
+  if [[ "$last_lowest" == "$current_lowest" ]]; then
+    echo $current_lowest > lowest.txt
+    cleanup
+  else
+    echo $current_lowest > lowest.txt
+    write_index $current_lowest
+    cleanup
+  fi
 }
 
 main "$@"
